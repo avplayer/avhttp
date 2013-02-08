@@ -35,8 +35,36 @@ using boost::asio::ip::tcp;
 
 namespace avhttp {
 
-// 一个http流类实现, 用于同步或异步访问http数据.
+// 一个http流类实现, 用于同步或异步访问一个指定的url上的数据.
+// 目前支持http/https协议.
+// 以下是同步方式访问一个url中的数据使用示例.
+// @begin example
+//  try
+//  {
+//  	boost::asio::io_service io_service;
+//  	avhttp::http_stream h(io_service);
+//  	avhttp::request_opts opt;
 //
+//  	// 设置请求选项.
+//  	opt.insert("Connection", "close");
+//  	h.request_options(opt);
+//  	h.open("http://www.boost.org/LICENSE_1_0.txt");
+//
+//  	boost::system::error_code ec;
+//  	while (!ec)
+//  	{
+//  		char data[1024];
+//  		std::size_t bytes_transferred = h.read_some(boost::asio::buffer(data, 1024), ec);
+//			// 如果要读取指定大小的数据, 可以使用boost::asio::read, 如下:
+//			// std::size_t bytes_transferred = boost::asio::read(h, boost::asio::buffer(buf), ec);
+//  		std::cout.write(data, bytes_transferred);
+//  	}
+//  }
+//  catch (std::exception& e)
+//  {
+//  	std::cerr << "Exception: " << e.what() << std::endl;
+//  }
+// @end example
 class http_stream : public boost::noncopyable
 {
 public:
@@ -103,7 +131,6 @@ public:
 
 		// 清空一些选项.
 		m_response_opts.clear();
-		m_request_opts.clear();
 		m_content_type = "";
 		m_status_code = 0;
 		m_content_length = 0;
