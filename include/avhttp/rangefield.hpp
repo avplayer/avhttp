@@ -25,6 +25,16 @@
 
 #include "bitfield.hpp"
 
+#if defined(_MSC_VER)
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+#endif
+
 namespace avhttp {
 
 // 定义请求数据范围类型.
