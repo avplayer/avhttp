@@ -46,10 +46,10 @@ extern "C"
 
 namespace avhttp {
 
-// 一个http流类实现, 用于同步或异步访问一个指定的url上的数据.
-// 目前支持http/https协议.
-// @备注: 该类http_stream的对象非线程安全!
-// 以下是同步方式访问一个url中的数据使用示例.
+// A http stream, for ask the data from an url, asynchronously or 
+// synchronously. Now supports http and https protocol.
+// @notice: Class http_stream is NOT thread-safe!!
+// An example for synchronous calls.
 // @begin example
 //  try
 //  {
@@ -57,7 +57,7 @@ namespace avhttp {
 //  	avhttp::http_stream h(io_service);
 //  	avhttp::request_opts opt;
 //
-//  	// 设置请求选项.
+//  	// Set the request options.
 //  	opt.insert("Connection", "close");
 //  	h.request_options(opt);
 //  	h.open("http://www.boost.org/LICENSE_1_0.txt");
@@ -67,7 +67,7 @@ namespace avhttp {
 //  	{
 //  		char data[1024];
 //  		std::size_t bytes_transferred = h.read_some(boost::asio::buffer(data, 1024), ec);
-//			// 如果要读取指定大小的数据, 可以使用boost::asio::read, 如下:
+//			// For fixed-size data, you can use boost::asio::read, like:
 //			// std::size_t bytes_transferred = boost::asio::read(h, boost::asio::buffer(buf), ec);
 //  		std::cout.write(data, bytes_transferred);
 //  	}
@@ -78,7 +78,7 @@ namespace avhttp {
 //  }
 // @end example
 //
-// 以下是异步方式访问一个url中的数据使用示例.
+// Below is for asynchronous ones.
 // @begin example
 //  class downloader
 //  {
@@ -87,11 +87,11 @@ namespace avhttp {
 //  		: m_io_service(io)
 //  		, m_stream(io)
 //  	{
-//  		// 设置请求选项.
+//  		// Set the request options.
 //  		avhttp::request_opts opt;
 //  		opt.insert("Connection", "close");
 //  		m_stream.request_options(opt);
-//			// 发起异步请求.
+//			// Starts the asynchronous request.
 //  		m_stream.async_open("http://www.boost.org/LICENSE_1_0.txt",
 //  			boost::bind(&downloader::handle_open, this, boost::asio::placeholders::error));
 //  	}
@@ -107,7 +107,7 @@ namespace avhttp {
 //  				boost::bind(&downloader::handle_read, this,
 //  				boost::asio::placeholders::bytes_transferred,
 //  				boost::asio::placeholders::error));
-//				// 在这里也支持使用boost::asio::async_read来读取一定量大小的数据, 用法用boost.asio, 比如:
+//				// Supports boost::asio::async_read too, use boost.asio, like:
 //				boost::asio::async_read(m_stream, boost::asio::buffer(m_buffer),
 // 					boost::bind(&downloader::handle_read, this,
 // 					boost::asio::placeholders::bytes_transferred,
@@ -155,9 +155,9 @@ public:
 	/// Destructor.
 	AVHTTP_DECL virtual ~http_stream();
 
-	///打开一个指定的url.
-	// 失败将抛出一个boost::system::system_error异常.
-	// @param u 将要打开的URL.
+	///Request the given url.
+	// Throw boost::system::system_error on failure.
+	// @param u URL to be opened.
 	// @begin example
 	//   avhttp::http_stream h(io_service);
 	//   try
@@ -171,9 +171,9 @@ public:
 	// @end example
 	AVHTTP_DECL void open(const url &u);
 
-	///打开一个指定的url.
-	// @param u 将要打开的URL.
-	// 通过ec引用获得执行状态.
+	///Request the given url.
+	// @param u URL to be opened.
+	// Get state via ec.
 	// @begin example
 	//   avhttp::http_stream h(io_service);
 	//   boost::system::error_code ec;
@@ -185,12 +185,12 @@ public:
 	// @end example
 	AVHTTP_DECL void open(const url &u, boost::system::error_code &ec);
 
-	///异步打开一个指定的URL.
-	// @param u 将要打开的URL.
-	// @param handler 将被调用在打开完成时. 它必须满足以下条件:
+	///Request URL asynchronously.
+	// @param u URL to be opened.
+	// @param handler be called on okay. Must meet:
 	// @begin code
 	//  void handler(
-	//    const boost::system::error_code &ec // 用于返回操作状态.
+	//    const boost::system::error_code &ec // To return the state.
 	//  );
 	// @end code
 	// @begin example
@@ -198,25 +198,25 @@ public:
 	//  {
 	//    if (!ec)
 	//    {
-	//      // 打开成功!
+	//      // Okay!
 	//    }
 	//  }
 	//  ...
 	//  avhttp::http_stream h(io_service);
 	//  h.async_open("http://www.boost.org", open_handler);
 	// @end example
-	// @备注: handler也可以使用boost.bind来绑定一个符合规定的函数作
-	// 为async_open的参数handler.
+	// @remark: handler can also bind a regular method via boost.bind as
+	// the param handler of async_open.
 	template <typename Handler>
 	void async_open(const url &u, BOOST_ASIO_MOVE_ARG(Handler) handler);
 
-	///从这个http_stream中读取一些数据.
-	// @param buffers一个或多个读取数据的缓冲区, 这个类型必须满足MutableBufferSequence,
-	// MutableBufferSequence的定义在boost.asio文档中.
-	// @函数返回读取到的数据大小.
-	// @失败将抛出boost::asio::system_error异常.
-	// @备注: 该函数将会阻塞到一直等待有数据或发生错误时才返回.
-	// read_some不能读取指定大小的数据.
+	///Read from http_stream.
+	// @param buffers one or more buffers, must meets MutableBufferSequence,
+	// MutableBufferSequenceis defined in the documention of boost.asio.
+	// @return: The length of data read. In bytes.
+	//          Throw boost::asio::system_error on failure.
+	// @remark: Will block until there is data or meets error.
+	//          read_some cannot read data in given size.
 	// @begin example
 	//  try
 	//  {

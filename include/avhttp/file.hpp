@@ -34,9 +34,9 @@ public:
 
 public:
 
-	// 存储组件初始化.
-	// @param file_path指定了文件名路径信息.
-	// @param ec在出错时保存了详细的错误信息.
+	// Saving module init.
+	// @param file_path path of the file.
+	// @param ec saves the complete info when met error.
 	virtual void open(const fs::path &file_path, boost::system::error_code &ec)
 	{
 		ec = boost::system::error_code();
@@ -52,23 +52,26 @@ public:
 		}
 	}
 
-	///是否打开.
+	///Opened or not.
 	inline bool is_open() const
 	{
 		return m_fstream.is_open();
 	}
 
-	// 关闭存储组件.
+	// Close the saving module.
 	virtual void close()
 	{
 		m_fstream.close();
 	}
 
-	// 写入数据.
-	// @param buf是需要写入的数据缓冲.
-	// @param offset是写入的偏移位置.
-	// @param size指定了写入的数据缓冲大小.
-	// @返回值为实际写入的字节数, 返回-1表示写入失败.
+// Is the crap below really necessary? I debut it.
+
+	// Write the data.
+	// @param buf The buffer to be written.
+	// @param offset Where to start writing.
+	// @param size The size of the buffer.
+	// @return The bytes exactly written.
+    //         -1 when met error.
 	virtual int write(const char *buf, boost::uint64_t offset, int size)
 	{
 		m_fstream.seekp(offset, ios::beg);
@@ -77,11 +80,12 @@ public:
 		return size;
 	}
 
-	// 读取数据.
-	// @param buf是需要读取的数据缓冲.
-	// @param offset是读取的偏移位置.
-	// @param size指定了读取的数据缓冲大小.
-	// @返回值为实际读取的字节数, 返回-1表示读取失败.
+	// Read data.
+	// @param buf The buffer to be read.
+	// @param offset Where to start reading.
+	// @param size Size of the buffer.
+	// @return The bytes exactly read.
+    //         -1 when met error.
 	virtual int read(char *buf, boost::uint64_t offset, int size)
 	{
 		m_fstream.seekg(offset, ios::beg);
@@ -89,11 +93,12 @@ public:
 		return size;
 	}
 
+
 protected:
 	boost::filesystem::fstream m_fstream;
 };
 
-// 默认存储对象.
+// Default saving object.
 static storage_interface* default_storage_constructor()
 {
 	return new file();

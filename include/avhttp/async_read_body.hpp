@@ -3,7 +3,7 @@
 // ~~~~~~~~~~~~~~~~~~~
 //
 // Copyright (c) 2013 Jack (jack dot wgm at gmail dot com)
-// Copyright (C) 2012 - 2013  微蔡 <microcai@fedoraproject.org>
+// Copyright (C) 2012 - 2013  microcat <microcai@fedoraproject.org>
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // path LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -39,7 +39,7 @@ struct read_all_t
 
 		if(m_content_length > 0 )
 		{
-			// 读取到 content_length 是吧.
+			// Yet has read content_length, yes.
 			return m_content_length - bytes_transferred;
 		}
 		else
@@ -129,28 +129,34 @@ read_body_op<AsyncReadStream, MutableBufferSequence, Handler>
 } // namespace detail
 
 
-///用于http_stream异步访问url.
-// 这个函数用于http_stream异步访问指定的url, 并通过handler回调通知用户, 数据将
-// 保存在用户事先提供的buffers中.
-// @注意:
-//  1. 该函数回调条件为直到读取完整的body或eof或其它错误, 错误信息通过error_code传回.
-//  2. 在完成整个过程中, 应该保持 stream 和 buffers的生命期.
-// @param stream 一个http_stream对象.
-// @param url 指定的url.
-// @param buffers 一个或多个用于读取数据的缓冲区
-// 这个类型必须满足MutableBufferSequence, MutableBufferSequence的定义.
-// 具体可参考boost.asio文档中相应的描述.
-// @param handler在读取操作完成或出现错误时, 将被回调, 它满足以下条件:
+///For http_stream to ask url asynchronously.
+// This method is for http_stream to ask url asynchronously, and 
+// call the user via handler callback, data will be saved in the
+// buffers user given first.
+// @notice:
+//  1. The method will call back till body or eof or any other
+//     errors, back via error_code.
+//  2. During the whole procedure, should keep stream and buffers'
+//     lifetime.
+// @param stream a http_stream object.
+// @param url given url.
+// @param buffers one or some buffers
+// This class MUST meet the MutableBufferSequence, 
+// MutableBufferSequence's defines.
+// See boost.asio for details.
+// @param handler will be call back at the end(ok or error), it
+// meets:
 // @begin code
 //  void handler(
-//    const boost::system::error_code &ec,	// 用于返回操作状态.
-//    std::size_t bytes_transferred			// 返回读取的数据字节数.
+//    const boost::system::error_code &ec,	// For returning the state.
+//    std::size_t bytes_transferred			// Return the length of 
+//                                          // data read in bytes.
 //  );
 // @end code
 // @begin example
 //  void handler(const boost::system::error_code &ec, std::size_t bytes_transferred)
 //  {
-//      // 处理异步回调.
+//      // Process async call-back.
 //  }
 //  ...
 //  avhttp::http_stream h(io);
