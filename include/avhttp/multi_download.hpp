@@ -42,13 +42,13 @@
 namespace avhttp
 {
 
-// multi_download类的具体实现.
+// Detailed implement of multi_download.
 class multi_download : public boost::noncopyable
 {
-	// 重定义http_stream_ptr指针.
+	// Redefine http_stream_ptr pointer.
 	typedef boost::shared_ptr<http_stream> http_stream_ptr;
 
-	// 定义http_stream_obj.
+	// Define http_stream_obj.
 	struct http_stream_object
 	{
 		http_stream_object()
@@ -60,42 +60,44 @@ class multi_download : public boost::noncopyable
 			, direct_reconnect(false)
 		{}
 
-		// http_stream对象.
+		// http_stream object.
 		http_stream_ptr stream;
 
-		// 数据缓冲, 下载时的缓冲.
+		// Data buffer, bufer while downloading.
 		boost::array<char, default_buffer_size> buffer;
 
-		// 请求的数据范围, 每次由multi_download分配一个下载范围, stream按这个范围去下载.
+		// The range of data requesting, everytime multi_download 
+        // delivers a range, stream downloads by this.
 		range request_range;
 
-		// 本次请求已经下载的数据, 相对于request_range, 当一个request_range下载完成后,
-		// bytes_transferred自动置为0.
+		// Data got by this request, comparing to request_range, 
+        // After request_range downloaded ok, bytes_transferred 
+        // goes 0 automaticly.
 		boost::int64_t bytes_transferred;
 
-		// 当前对象下载的数据统计.
+		// Bytes downloaded by current object.
 		boost::int64_t bytes_downloaded;
 
-		// 当前对象发起请求的次数.
+		// The amount of request current object made.
 		int request_count;
 
-		// 最后请求的时间.
+		// Time of the last request.
 		boost::posix_time::ptime last_request_time;
 
-		// 最后的错误信息.
+		// The last error.
 		boost::system::error_code ec;
 
-		// 是否操作功能完成.
+		// Ok or not.
 		bool done;
 
-		// 立即重新尝试连接.
+		// Reconnect at once?
 		bool direct_reconnect;
 	};
 
-	// 重定义http_object_ptr指针.
+	// Redefine http_object_ptr refer.
 	typedef boost::shared_ptr<http_stream_object> http_object_ptr;
 
-	// 用于计算下载速率.
+	// For calculating speed.
 	struct byte_rate
 	{
 		byte_rate()
@@ -110,16 +112,16 @@ class multi_download : public boost::noncopyable
 			}
 		}
 
-		// 用于统计速率的时间.
+		// The time.
 		const int seconds;
 
-		// 最后的byte_rate.
+		// The last byte_rate.
 		std::vector<int> last_byte_rate;
 
-		// last_byte_rate的下标.
+		// The index of last_byte_rate.
 		int index;
 
-		// 当前byte_rate.
+		// Current byte_rate.
 		int current_byte_rate;
 	};
 
@@ -142,9 +144,9 @@ public:
 
 public:
 
-	///开始multi_download开始下载.
-	// @param u指定的url.
-	// @param ec当发生错误时, 包含详细的错误信息.
+	///Start multi download.
+	// @param u current url.
+	// @param ec contains detailed info when meets error.
 	// @备注: 直接使用内部的file.hpp下载数据到文件, 若想自己指定数据下载到指定的地方
 	// 可以通过调用另一个open来完成, 具体见另一个open的详细说明.
 	AVHTTP_DECL void start(const std::string &u, boost::system::error_code &ec)

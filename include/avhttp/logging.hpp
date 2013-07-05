@@ -28,22 +28,22 @@ namespace avhttp {
 
 namespace fs = boost::filesystem;
 
-///内部使用的简易日志类.
-// 使用说明:
-//	在程序入口(如:main)函数调用 INIT_LOGGER 宏, 它有两个参数, 第一个参数指定了日志文件保存
-//	的路径, 第二个参数指定了日志文件保存的文件名, 详细见INIT_LOGGER.
-//	然后就可以使用LOG_DEBUG/LOG_INFO/LOG_WARNING/LOG_ERROR这几个宏来输出日志信息.
+///Simple logging class for internal use.
+// Instructions:
+//	At entrance method(eg. main) call INIT_LOGGER, two params, first is the path for
+//	log file, the second is the filename, see INIT_LOGGER for details.
+//	Then can use LOG_DEBUG/LOG_INFO/LOG_WARNING/LOG_ERROR for logging.
 // @begin example
-//  #include "avhttp.hpp" // avhttp.hpp 已经包含 logging.hpp, 也可单独包含logging.hpp.
+//  #include "avhttp.hpp" // avhttp.hpp includes logging.hpp, can include logging.hpp alone too, for sure.
 //  int main()
 //  {
-//     INIT_LOGGER(".", "example.log");	// 在当前目录创建日志文件为example.log.
-//     // 也可 INIT_LOGGER("", ""); 空串为参数来禁止输出日志到文件, 仅输出到控制台.
+//     INIT_LOGGER(".", "example.log");	// Create example.log in current working dir.
+//     // Can be INIT_LOGGER("", "") too; For no outputing to files but stdout.
 //     LOG_DEBUG("Initialized.");
 //     std::string result = do_something();
-//     LOG_DEBUG("do_something return : " << result);	// 输出do_something返回结果到日志.
+//     LOG_DEBUG("do_something return : " << result);	// Output do_something's result.
 //     ...
-//     UNINIT_LOGGER();	// 卸载日志模块.
+//     UNINIT_LOGGER();	// Uninstall logging module.
 //  }
 // @end example
 
@@ -154,7 +154,7 @@ Logger_ptr& logger_single(std::string path = ".",
 }
 
 //////////////////////////////////////////////////////////////////////////
-// 日志相关内部实现定义.
+// Internal interface about logging.
 
 #define _LOGS_ (*(avhttp::aux::logger_single<avhttp::logger, boost::shared_ptr<avhttp::logger> >()))
 
@@ -171,18 +171,19 @@ Logger_ptr& logger_single(std::string path = ".",
 #endif // WIN32 && LOGGER_DEBUG_VIEW
 
 //////////////////////////////////////////////////////////////////////////
-// 日志相关外部接口定义.
+// Public interface about logging.
 
-///初始化日志接口.
-// @param path指定了日志文件保存的路径.
-// @param file指定了日志文件名.
-// 备注: 如果file为空串, 则不产生日志文件, 仅仅输出日志到屏幕.
+///Init logging module.
+// @param path path to the log file.
+// @param file the log file name.
+// @remark: if file is "", then there will be no outputing to 
+//      files but stdout.
 #define INIT_LOGGER(path, file) do {\
 	_LOCKS_();\
 	avhttp::aux::logger_single<avhttp::logger, boost::shared_ptr<avhttp::logger> >(path, file, true, true);\
 } while (0)
 
-///卸载日志模块接口.
+///Uninstall logging module.
 #define UNINIT_LOGGER() do {\
 	_LOCKS_();\
 	avhttp::aux::logger_single<avhttp::logger, boost::shared_ptr<avhttp::logger> >().reset();\

@@ -229,40 +229,41 @@ public:
 	template <typename MutableBufferSequence>
 	std::size_t read_some(const MutableBufferSequence &buffers);
 
-	///从这个http_stream读取一些数据.
-	// @param buffers一个或多个用于读取数据的缓冲区, 这个类型必须满足
-	// MutableBufferSequence, MutableBufferSequence的定义在boost.asio
-	// 文档中.
-	// @param ec在发生错误时, 将传回错误信息.
-	// @函数返回读取到的数据大小.
-	// @备注: 该函数将会阻塞到一直等待有数据或发生错误时才返回.
-	// read_some不能读取指定大小的数据.
+	///Read from http_stream.
+	// @param buffers one or more buffers, must meet
+	// MutableBufferSequence, MutableBufferSequence is defined in
+    // the document of boost.asio.
+	// @param ec Will return the infomation .
+	// @return the length of the data read.
+	// @notice: Will block until reads or meets error.
+	// read_some can NOT read fixed-size data.
 	// @begin example
 	//  boost::system::error_code ec;
 	//  std::size bytes_transferred = s.read_some(boost::asio::buffer(data, size), ec);
 	//  ...
 	// @end example
-	// 关于示例中的boost::asio::buffer用法可以参考boost中的文档. 它可以接受一个
-	// boost.array或std.vector作为数据容器.
+	// See boost document for the usage of boost::asio::buffer. 
+	// boost.array or std.vector can be used for collecting data.
 	template <typename MutableBufferSequence>
 	std::size_t read_some(const MutableBufferSequence &buffers,
 		boost::system::error_code &ec);
 
-	///从这个http_stream异步读取一些数据.
-	// @param buffers一个或多个用于读取数据的缓冲区, 这个类型必须满足MutableBufferSequence,
-	//  MutableBufferSequence的定义在boost.asio文档中.
+	///Read asynchronously from http_stream.
+	// @param buffers one or more buffers, must meet 
+    // MutableBufferSequence, which defined in the documention of
+    // boost.asio : 
 	// http://www.boost.org/doc/libs/1_53_0/doc/html/boost_asio/reference/MutableBufferSequence.html
-	// @param handler在读取操作完成或出现错误时, 将被回调, 它满足以下条件:
+	// @param handler will be call back in the end (ok or error), meets:
 	// @begin code
 	//  void handler(
-	//    const boost::system::error_code &ec,	// 用于返回操作状态.
-	//    std::size_t bytes_transferred			// 返回读取的数据字节数.
+	//    const boost::system::error_code &ec,	// For return state.
+	//    std::size_t bytes_transferred			// Num of bytes be read.
 	//  );
 	// @end code
 	// @begin example
 	//   void handler(const boost::system::error_code &ec, std::size_t bytes_transferred)
 	//   {
-	//		// 处理异步回调.
+	//		// Process asynchronous call-back.
 	//   }
 	//   http_stream h(io_service);
 	//   ...
@@ -270,17 +271,19 @@ public:
 	//   boost::asio::async_read(h, boost::asio::buffer(buffer), handler);
 	//   ...
 	// @end example
-	// 关于示例中的boost::asio::buffer用法可以参考boost中的文档. 它可以接受一个
-	// boost.array或std.vector作为数据容器.
+	// See boost document for the usage of boost::asio::buffer. 
+	// boost.array or std.vector can be used for collecting data.
 	template <typename MutableBufferSequence, typename Handler>
 	void async_read_some(const MutableBufferSequence &buffers, BOOST_ASIO_MOVE_ARG(Handler) handler);
 
-	///向这个http_stream中发送一些数据.
-	// @param buffers是一个或多个用于发送数据缓冲. 这个类型必须满足ConstBufferSequence, 参考文档:
+	///Send some data to http_stream.
+	// @param buffers One or more buffers to be sent. 
+    // Must meet ConstBufferSequence, See:
 	// http://www.boost.org/doc/libs/1_53_0/doc/html/boost_asio/reference/ConstBufferSequence.html
-	// @返回实现发送的数据大小.
-	// @备注: 该函数将会阻塞到一直等待数据被发送或发生错误时才返回.
-	// write_some不保证发送完所有数据, 用户需要根据返回值来确定已经发送的数据大小.
+	// @return Num of bytes sent.
+	// @remark: Will block until finishes(ok or error).
+	// write_some is NOT supposed to transfer all the data, the bytes 
+    // transferred shouda be known via the params returned.
 	// @begin example
 	//  try
 	//  {
@@ -292,57 +295,59 @@ public:
 	//  }
 	//  ...
 	// @end example
-	// 关于示例中的boost::asio::buffer用法可以参考boost中的文档. 它可以接受一个
-	// boost.array或std.vector作为数据容器.
+	// See boost document for the usage of boost::asio::buffer. 
+	// boost.array or std.vector can be used for collecting data.
 	template <typename ConstBufferSequence>
 	std::size_t write_some(const ConstBufferSequence &buffers);
 
-	///向这个http_stream中发送一些数据.
-	// @param buffers是一个或多个用于发送数据缓冲. 这个类型必须满足ConstBufferSequence, 参考文档:
+	///Send some data to http_stream.
+	// @param buffers One or more buffers to be sent. 
+    // Must meet ConstBufferSequence, See:
 	// http://www.boost.org/doc/libs/1_53_0/doc/html/boost_asio/reference/ConstBufferSequence.html
-	// @返回实现发送的数据大小.
-	// @备注: 该函数将会阻塞到一直等待数据被发送或发生错误时才返回.
-	// write_some不保证发送完所有数据, 用户需要根据返回值来确定已经发送的数据大小.
+	// @return Num of bytes sent.
+	// @remark: Will block until finishes(ok or error).
+	// write_some is NOT supposed to transfer all the data, the bytes 
+    // transferred shouda be known via the params returned.
 	// @begin example
 	//  boost::system::error_code ec;
 	//  std::size bytes_transferred = s.write_some(boost::asio::buffer(data, size), ec);
 	//  ...
 	// @end example
-	// 关于示例中的boost::asio::buffer用法可以参考boost中的文档. 它可以接受一个
-	// boost.array或std.vector作为数据容器.
+	// See boost document for the usage of boost::asio::buffer. 
+	// boost.array or std.vector can be used for collecting data.
 	template <typename ConstBufferSequence>
 	std::size_t write_some(const ConstBufferSequence &buffers,
 		boost::system::error_code &ec);
 
-	///从这个http_stream异步发送一些数据.
-	// @param buffers一个或多个用于读取数据的缓冲区, 这个类型必须满足ConstBufferSequence,
-	//  ConstBufferSequence的定义在boost.asio文档中.
+	///Send some data asynchronously to the http_stream.
+	// @param buffers One or more buffers to be sent. 
+    // Must meet ConstBufferSequence, See:
 	// http://www.boost.org/doc/libs/1_53_0/doc/html/boost_asio/reference/ConstBufferSequence.html
-	// @param handler在发送操作完成或出现错误时, 将被回调, 它满足以下条件:
+	// @param handler will be call back in the end (ok or error), meets:
 	// @begin code
 	//  void handler(
-	//    int bytes_transferred,				// 返回发送的数据字节数.
-	//    const boost::system::error_code &ec	// 用于返回操作状态.
+	//    std::size_t bytes_transferred			// Num of bytes be read.
+	//    const boost::system::error_code &ec,	// For return state.
 	//  );
 	// @end code
 	// @begin example
 	//   void handler(int bytes_transferred, const boost::system::error_code &ec)
 	//   {
-	//		// 处理异步回调.
+	//		// Process asynchronous call-back.
 	//   }
 	//   http_stream h(io_service);
 	//   ...
 	//   h.async_write_some(boost::asio::buffer(data, size), handler);
 	//   ...
 	// @end example
-	// 关于示例中的boost::asio::buffer用法可以参考boost中的文档. 它可以接受一个
-	// boost.array或std.vector作为数据容器.
+	// See boost document for the usage of boost::asio::buffer. 
+	// boost.array or std.vector can be used for collecting data.
 	template <typename ConstBufferSequence, typename Handler>
 	void async_write_some(const ConstBufferSequence &buffers, BOOST_ASIO_MOVE_ARG(Handler) handler);
 
-	///向http服务器发起一个请求.
-	// @向http服务器发起一个请求, 如果失败抛出异常.
-	// @param opt是向服务器发起请求的选项信息.
+	///Send a request to an http server.
+	// @Send a request to an http server, throw on failures.
+	// @param opt is the options for the request.
 	// @begin example
 	//  avhttp::http_stream h(io_service);
 	//  ...
@@ -353,9 +358,9 @@ public:
 	// @end example
 	AVHTTP_DECL void request(request_opts &opt);
 
-	///向http服务器发起一个请求.
-	// @param opt是向服务器发起请求的选项信息.
-	// @param ec在发生错误时, 将传回错误信息.
+	///Send a request to an http server.
+	// @param opt is the options for the request.
+	// @param ec will return the information when meets error.
 	// @begin example
 	//  avhttp::http_stream h(io_service);
 	//  ...
@@ -368,12 +373,12 @@ public:
 	// @end example
 	AVHTTP_DECL void request(request_opts &opt, boost::system::error_code &ec);
 
-	///向http服务器发起一个异步请求.
-	// @param opt指定的http请求选项.
-	// @param handler 将被调用在打开完成时. 它必须满足以下条件:
+	///Send a asynchronous request to an http server.
+	// @param opt is the options for the request.
+	// @param handler will be call back in the end (ok or error), meets:
 	// @begin code
 	//  void handler(
-	//    const boost::system::error_code &ec	// 用于返回操作状态.
+	//    const boost::system::error_code &ec,	// For return state.
 	//  );
 	// @end code
 	// @begin example
@@ -381,7 +386,7 @@ public:
 	//  {
 	//    if (!ec)
 	//    {
-	//      // 请求成功!
+	//      // Ok!
 	//    }
 	//  }
 	//  ...
@@ -394,35 +399,38 @@ public:
 	template <typename Handler>
 	void async_request(const request_opts &opt, BOOST_ASIO_MOVE_ARG(Handler) handler);
 
-	///清除读写缓冲区数据.
-	// @备注: 非线程安全! 不应在正在进行读写操作时进行该操作!
+	///Clear IO buffer.
+	// @remark: NOT thread-safe! Don't call it while reading/writing!
 	AVHTTP_DECL void clear();
 
-	///关闭http_stream.
-	// @失败抛出asio::system_error异常.
-	// @备注: 停止所有正在进行的读写操作, 正在进行的异步调用将回调
-	// boost::asio::error::operation_aborted错误.
+	///Close http_stream.
+	// @throw asio::system_error on failure.
+	// @remark: Stop all the IO operation, asynchronous ones will
+    //          be call back.
+	// Error boost::asio::error::operation_aborted.
 	AVHTTP_DECL void close();
 
-	///关闭http_stream.
-	// @param ec保存失败信息.
-	// @备注: 停止所有正在进行的读写操作, 正在进行的异步调用将回调
-	// boost::asio::error::operation_aborted错误.
+	///Close http_stream.
+	// @param ec for saving error informations.
+	// @remark: Stop all the IO operation, asynchronous ones will
+    //          be call back.
+	// Error boost::asio::error::operation_aborted.
 	AVHTTP_DECL void close(boost::system::error_code &ec);
 
-	///判断是否打开.
-	// @返回是否打开.
+	///See it is opened or not.
+	// @return opened or not.
 	AVHTTP_DECL bool is_open() const;
 
-	///反回当前http_stream所使用的io_service的引用.
+	///Return current http_stream's io_service quote.
 	AVHTTP_DECL boost::asio::io_service& get_io_service();
 
-	///设置最大重定向次数.
-	// @param n 指定最大重定向次数, 为0表示禁用重定向.
+	///Set the max redirect times.
+	// @param n the max redirect times, set to 0 to 
+    //          disable redirection.
 	AVHTTP_DECL void max_redirects(int n);
 
-	///设置代理, 通过设置代理访问http服务器.
-	// @param s 指定了代理参数.
+	///Set up proxy, and visit http server via it.
+	// @param s options for proxy.
 	// @begin example
 	//  avhttp::http_stream h(io_service);
 	//  proxy_settings s;
@@ -434,21 +442,21 @@ public:
 	// @end example
 	AVHTTP_DECL void proxy(const proxy_settings &s);
 
-	///设置请求时的http选项.
-	// @param options 为http的选项. 目前有以下几项特定选项:
-	//  _request_method, 取值 "GET/POST/HEAD", 默认为"GET".
-	//  Host, 取值为http服务器, 默认为http服务器.
-	//  Accept, 取值任意, 默认为"*/*".
+	///Set the http option while connecting.
+	// @param options http option. Now supports:
+	//  _request_method, can be "GET", "POST", or"HEAD", default "GET".
+	//  Host, can be httpserver , default is http server.
+	//  Accept, can be anything, default "*/*".
 	// @begin example
 	//  avhttp::http_stream h(io_service);
 	//  request_opts options;
-	//  options.insert("_request_method", "POST"); // 默认为GET方式.
+	//  options.insert("_request_method", "POST"); // default by GET.
 	//  h.request_options(options);
 	//  ...
 	// @end example
 	AVHTTP_DECL void request_options(const request_opts &options);
 
-	///返回请求时的http选项.
+	///Return the http option while connecting.
 	// @begin example
 	//  avhttp::http_stream h(io_service);
 	//  request_opts options;
@@ -457,44 +465,45 @@ public:
 	// @end example
 	AVHTTP_DECL request_opts request_options(void) const;
 
-	///http服务器回复选项.
-	// @返回服务器回复的所有选项信息, key/value形式.
+	///Http server response options.
+	// @return: All http server response options, in the form 
+    //          of key/value.
 	AVHTTP_DECL response_opts response_options(void) const;
 
-	///返回location.
-	// @返回location信息, 如果没有则返回空串.
+	///Return location.
+	// @return: location, "" for none.
 	AVHTTP_DECL const std::string& location() const;
 
-	///返回最终请求的url信息.
+	///Return url finally requested.
 	AVHTTP_DECL const std::string final_url() const;
 
-	///返回content_length.
-	// @content_length信息, 如果没有则为-1.
+	///Return content_length.
+	// @return: content_length, -1 for none.
 	AVHTTP_DECL boost::int64_t content_length();
 
-	///设置是否认证服务器证书.
-	// @param is_check 如果为true表示认证服务器证书, 如果为false表示不认证服务器证书.
-	// 默认为认证服务器证书.
+	///Set whether check server cert.
+	// @param is_check true for check, false for not to check.
+	// Default is true.
 	AVHTTP_DECL void check_certificate(bool is_check);
 
-	///添加证书路径.
-	// @param path证书路径.
+	///Add cert path.
+	// @param path cert path.
 	AVHTTP_DECL void add_verify_path(const std::string &path);
 
-	///加载证书文件.
-	// @param filename指定的证书文件名.
+	///Load cert file.
+	// @param filename the name of given cert file.
 	AVHTTP_DECL void load_verify_file(const std::string &filename);
 
 
 protected:
 
-	// 内部相关实现, 非外部接口.
+	// Private implement, NOT public interface.
 
 	template <typename MutableBufferSequence>
 	std::size_t read_some_impl(const MutableBufferSequence &buffers,
 		boost::system::error_code &ec);
 
-	// 异步处理模板成员的相关实现.
+	// Asynchronous processing module members implement.
 
 	template <typename Handler>
 	void handle_resolve(const boost::system::error_code &err,
@@ -530,18 +539,18 @@ protected:
 	void handle_chunked_size(const MutableBufferSequence &buffers,
 		Handler handler, const boost::system::error_code &ec, std::size_t bytes_transferred);
 
-	// 连接到socks代理, 在这一步中完成和socks的信息交换过程, 出错信息在ec中.
+	// Connect to socks proxy, do information exchange here, error info is in ec.
 	template <typename Stream>
 	void socks_proxy_connect(Stream &sock, boost::system::error_code &ec);
 
 	template <typename Stream>
 	void socks_proxy_handshake(Stream &sock, boost::system::error_code &ec);
 
-	// socks代理进行异步连接.
+	// Socks proxy do asynchronous connect.
 	template <typename Stream, typename Handler>
 	void async_socks_proxy_connect(Stream &sock, Handler handler);
 
-	// 异步代理查询回调.
+	// Asynchronous request proxy, and call back.
 	template <typename Stream, typename Handler>
 	void async_socks_proxy_resolve(const boost::system::error_code &err,
 		tcp::resolver::iterator endpoint_iterator, Stream &sock, Handler handler);
@@ -555,7 +564,7 @@ protected:
 		int bytes_transferred, const boost::system::error_code &err);
 
 #ifdef AVHTTP_ENABLE_OPENSSL
-	// 实现CONNECT指令, 用于请求目标为https主机时使用.
+	// Do CONNECT order, for requesting https servers.
 	template <typename Stream, typename Handler>
 	void async_https_proxy_connect(Stream &sock, Handler handler);
 
@@ -583,7 +592,7 @@ protected:
 	void handle_https_proxy_handshake(Stream &sock, Handler handler,
 		const boost::system::error_code &err);
 
-	// 实现CONNECT指令, 用于请求目标为https主机时使用.
+	// Do CONNECT order, for requesting https servers.
 	template <typename Stream>
 	void https_proxy_connect(Stream &sock, boost::system::error_code &ec);
 #endif
@@ -594,9 +603,9 @@ protected:
 
 protected:
 
-	// 定义socket_type类型, socket_type是variant_stream的重定义, 它的作用
-	// 可以为ssl_socket或nossl_socket, 这样, 在访问socket的时候, 就不需要
-	// 区别编写不同的代码.
+	// Define socket_type, socket_type is a redefine of variant_stream, 
+	// which can BOTH act ssl_socket or nossl_socket, so, when 
+    // requesting socket, no need to write different code.
 #ifdef AVHTTP_ENABLE_OPENSSL
 	typedef avhttp::detail::ssl_stream<tcp::socket&> ssl_socket;
 #endif
@@ -608,63 +617,63 @@ protected:
 #endif
 	> socket_type;
 
-	// socks处理流程状态.
+	// socks procdure status.
 	enum socks_status
 	{
-		socks_proxy_resolve,	// 查询proxy主机的IP.
-		socks_connect_proxy,	// 连接proxy主机.
-		socks_send_version,		// 发送socks版本号.
-		socks4_resolve_host,	// 用于socks4查询连接的主机IP端口信息.
-		socks4_response,		// socks4服务器返回请求.
-		socks5_response_version,// socks5返回版本信息.
-		socks5_send_userinfo,	// 发送用户密码信息.
-		socks5_connect_request,	// 发送连接请求.
-		socks5_connect_response,// 服务器返回连接请求.
-		socks5_auth_status,		// 认证状态.
-		socks5_result,			// 最终结局.
-		socks5_read_domainname,	// 读取域名信息.
+		socks_proxy_resolve,	// Request proxy server's IP.
+		socks_connect_proxy,	// connect proxy server.
+		socks_send_version,		// Send socks version num.
+		socks4_resolve_host,	// For socks4 to request IP info.
+		socks4_response,		// socks4 server response request.
+		socks5_response_version,// socks5 return version info.
+		socks5_send_userinfo,	// send user password info.
+		socks5_connect_request,	// send connection request.
+		socks5_connect_response,// server response connect request.
+		socks5_auth_status,		// auth status.
+		socks5_result,			// The end.
+		socks5_read_domainname,	// Read domain info.
 #ifdef AVHTTP_ENABLE_OPENSSL
-		ssl_handshake,			// ssl进行异步握手.
+		ssl_handshake,			// ssl do async hand shaking.
 #endif
 	};
 
 private:
 
-	boost::asio::io_service &m_io_service;			// io_service引用.
-	tcp::resolver m_resolver;						// 解析HOST.
+	boost::asio::io_service &m_io_service;			// quote of io_service.
+	tcp::resolver m_resolver;						// reslove HOST.
 	socket_type m_sock;								// socket.
-	nossl_socket m_nossl_socket;					// 非ssl socket, 只用于https的proxy实现.
-	bool m_check_certificate;						// 是否认证服务端证书.
-	std::string m_ca_directory;						// 证书路径.
-	std::string m_ca_cert;							// CA证书文件.
-	request_opts m_request_opts;					// 向http服务器请求的头信息.
-	request_opts m_request_opts_priv;				// 向http服务器请求的头信息.
-	response_opts m_response_opts;					// http服务器返回的http头信息.
-	proxy_settings m_proxy;							// 代理设置.
-	int m_proxy_status;								// 异步中代理状态.
-	tcp::endpoint m_remote_endp;					// 用于socks4代理中.
-	std::string m_protocol;							// 协议类型(http/https).
-	url m_url;										// 保存当前请求的url.
-	bool m_keep_alive;								// 获得connection选项, 同时受m_response_opts影响.
-	int m_status_code;								// http返回状态码.
-	std::size_t m_redirects;						// 重定向次数计数.
-	std::size_t m_max_redirects;					// 重定向次数计数.
-	std::string m_content_type;						// 数据类型.
-	boost::int64_t m_content_length;				// 数据内容长度.
-	std::size_t m_body_size;						// body大小.
-	std::string m_location;							// 重定向的地址.
-	boost::asio::streambuf m_request;				// 请求缓冲.
-	boost::asio::streambuf m_response;				// 回复缓冲.
+	nossl_socket m_nossl_socket;					// non-ssl socket, for the proxy of https.
+	bool m_check_certificate;						// check the cert of server?
+	std::string m_ca_directory;						// path to the cert.
+	std::string m_ca_cert;							// CA cert file name.
+	request_opts m_request_opts;					// request http header info.
+	request_opts m_request_opts_priv;				// request http header info.
+	response_opts m_response_opts;					// server-replied http header info.
+	proxy_settings m_proxy;							// proxy settings.
+	int m_proxy_status;								// proxy status in async.
+	tcp::endpoint m_remote_endp;					// for socks4 proxy.
+	std::string m_protocol;							// protocol(http/https).
+	url m_url;										// save the current requesting url.
+	bool m_keep_alive;								// get the option connection, influnceed by m_response_opts.
+	int m_status_code;								// http return status.
+	std::size_t m_redirects;						// num of redirections.
+	std::size_t m_max_redirects;					// the max of them.
+	std::string m_content_type;						// content type.
+	boost::int64_t m_content_length;				// content length.
+	std::size_t m_body_size;						// body size.
+	std::string m_location;							// redirect URL.
+	boost::asio::streambuf m_request;				// request buffer.
+	boost::asio::streambuf m_response;				// reply buffer.
 #ifdef AVHTTP_ENABLE_ZLIB
-	z_stream m_stream;								// zlib支持.
-	char m_zlib_buffer[1024];						// 解压缓冲.
-	std::size_t m_zlib_buffer_size;					// 输入的字节数.
-	bool m_is_gzip;									// 是否使用gz.
+	z_stream m_stream;								// zlib support.
+	char m_zlib_buffer[1024];						// unzip buffer.
+	std::size_t m_zlib_buffer_size;					// bytes input.
+	bool m_is_gzip;									// gunzipped?
 #endif
-	bool m_is_chunked;								// 是否使用chunked编码.
-	bool m_skip_crlf;								// 跳过crlf.
-	bool m_is_chunked_end;							// 跳过chunked footer.
-	std::size_t m_chunked_size;						// chunked大小.
+	bool m_is_chunked;								// using chunked?
+	bool m_skip_crlf;								// skip crlf?
+	bool m_is_chunked_end;							// skip chunked footer?
+	std::size_t m_chunked_size;						// chunked size.
 };
 
 }
