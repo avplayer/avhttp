@@ -19,6 +19,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "avhttp/http_stream.hpp"
+#include <avhttp/file_upload.hpp>
 
 namespace avhttp {
 
@@ -139,32 +140,136 @@ inline std::size_t calc_content_length(const std::string& filename, const std::s
 	return content_length;
 }
 
-file_upload::file_upload(boost::asio::io_service& io)
+file_upload::file_upload(boost::asio::io_service& io, bool disable_100)
 	: m_io_service(io)
 	, m_http_stream(io)
+	, m_disable_100_continue(disable_100)
 {}
 
 file_upload::~file_upload()
 {}
 
-template <typename Handler>
-struct file_upload::open_coro : boost::asio::coroutine
+template<typename Stream, typename Handler>
+struct generate_body_stream_op : boost::asio::coroutine
 {
-	open_coro(http_stream& http, const std::string& url, const std::string& filename,
-		const std::string& file_of_form, const form_args& args, std::string& boundary, Handler handler)
+	generate_body_stream_op(Stream& http, const std::string& filename, const std::string& file_of_form,
+		const file_upload::form_args& args, std::string& boundary, Handler handler)
 		: m_handler(handler)
-		, m_http_stream(http)
+		, m_stream(http)
 		, m_filename(filename)
 		, m_file_of_form(file_of_form)
 		, m_form_args(args)
 		, m_boundary(boundary)
+		, m_content_disposition(new std::string)
 	{
+		m_stream.get_io_service().post(boost::bind<void>(*this, boost::system::error_code(), 0));
+	}
+
+	void operator()(boost::system::error_code ec, std::size_t bytes_transfered = 0)
+	{
+		using mime_types::extension_to_type;
+
+		// 出错, 如果是errc::continue_request则忽略.
+		if (ec)
+		{
+			m_handler(ec);
+			return;
+		}
+
+		BOOST_ASIO_CORO_REENTER(this)
+		{
+			// 循环发送表单参数.
+			m_iter = m_form_args.begin();
+			for (; m_iter != m_form_args.end(); m_iter++)
+			{
+				// 发送边界.
+				yield boost::asio::async_write(m_stream, boost::asio::buffer(m_boundary), *this);
+
+				// 发送 Content-Disposition.
+				*m_content_disposition = "Content-Disposition: form-data; name=\""
+					+ m_iter->first + "\"\r\n\r\n";
+				*m_content_disposition += m_iter->second;
+				*m_content_disposition += "\r\n";
+				yield boost::asio::async_write(m_stream,
+					boost::asio::buffer(*m_content_disposition), *this);
+			}
+
+			// 发送边界.
+			yield boost::asio::async_write(m_stream, boost::asio::buffer(m_boundary), *this);
+
+			// 发送文件名.
+			*m_content_disposition = "Content-Disposition: form-data; name=\""
+				+ m_file_of_form + "\"" + "; filename=" + "\""
+				+ fs::path(m_filename).leaf().string() + "\"\r\n"
+				+ "Content-Type: "
+				+ extension_to_type(boost::to_lower_copy(fs::extension(m_filename)))
+				+ "\r\n\r\n";
+			yield boost::asio::async_write(m_stream,
+				boost::asio::buffer(*m_content_disposition), *this);
+
+			// 回调用户handler.
+			m_stream.get_io_service().post(
+				boost::asio::detail::bind_handler(m_handler, ec)
+			);
+
+			// 用户接下来应该是调用 write_some, 但是 async_open 还没有返回, 切记!
+		}
+	}
+
+private:
+	Handler m_handler;
+
+	Stream & m_stream;
+	std::string m_filename;
+	const file_upload::form_args& m_form_args;
+	std::string m_file_of_form;
+	std::string& m_boundary;
+
+	boost::shared_ptr<interthread_stream> m_body_stream;
+
+	boost::shared_ptr<std::string> m_content_disposition;
+	file_upload::form_args::const_iterator m_iter;
+};
+
+template<typename Stream, typename Handler>
+generate_body_stream_op<Stream, Handler>
+generate_body_stream(Stream& http, const std::string& filename, const std::string& file_of_form,
+		const file_upload::form_args& args, std::string& boundary, Handler handler)
+{
+	return generate_body_stream_op<Stream, Handler>(
+		http, filename, file_of_form, args, boundary, handler
+	);
+}
+
+template <typename Handler>
+struct file_upload::open_coro : boost::asio::coroutine
+{
+	open_coro(http_stream& http, const std::string& url, const std::string& filename,
+		const std::string& file_of_form, const form_args& args, std::string& boundary,
+		const boost::shared_ptr<interthread_stream>& body_stream,
+		boost::function<void(boost::system::error_code)>& real_finish_handler, Handler handler)
+		: m_handler(handler)
+		, m_http_stream(http)
+		, m_body_stream(body_stream)
+		, m_filename(filename)
+		, m_file_of_form(file_of_form)
+		, m_form_args(args)
+		, m_boundary(boundary)
+		, m_real_finish_handler(real_finish_handler)
+	{
+		bool disable_100_continue = false;
+
+		if (m_body_stream)
+			disable_100_continue = true;
+
 		boost::system::error_code ec;
 		request_opts opts = m_http_stream.request_options();
 
 		// 设置为POST模式.
 		opts.insert(http_options::request_method, "POST");
-		opts.insert("Expect", "100-continue");
+
+		if (!disable_100_continue)
+			opts.insert("Expect", "100-continue");
 
 		// 计算Content-Length.
 		std::size_t content_length = calc_content_length(filename, file_of_form, args, ec);
@@ -186,54 +291,45 @@ struct file_upload::open_coro : boost::asio::coroutine
 		m_boundary = FORMBOUNDARY;
 		opts.insert(http_options::content_type, "multipart/form-data; boundary=" + m_boundary);
 		m_boundary = "--" + m_boundary + "\r\n";	// 之后都是单行的分隔.
+
+		if (disable_100_continue)
+		{
+			opts.body_stream(*m_body_stream);
+		}
+
 		m_http_stream.request_options(opts);
 		m_http_stream.async_open(url, *this);
+
+		if (disable_100_continue)
+		{
+			// start writing bodystreams !
+			generate_body_stream(*m_body_stream, filename, file_of_form, args, boundary, handler);
+		}
 	}
 
 	void operator()(boost::system::error_code ec, std::size_t bytes_transfered = 0)
 	{
-		using mime_types::extension_to_type;
 
 		// 出错, 如果是errc::continue_request则忽略.
-		if (ec && ec != errc::continue_request)
-		{
-			m_handler(ec);
-			return;
-		}
-
 		reenter (this)
 		{
-			// 循环发送表单参数.
-			m_iter = m_form_args.begin();
-			for (; m_iter != m_form_args.end(); m_iter++)
+			if (!m_body_stream)
 			{
-				// 发送边界.
-				yield boost::asio::async_write(m_http_stream, boost::asio::buffer(m_boundary), *this);
+				if (ec && ec != errc::continue_request)
+				{
+					m_handler(ec);
+					return;
+				}
+				// start writing bodystreams!
+				yield generate_body_stream(m_http_stream, m_filename, m_file_of_form,
+					m_form_args, m_boundary, *this);
 
-				// 发送 Content-Disposition.
-				*m_content_disposition = "Content-Disposition: form-data; name=\""
-					+ m_iter->first + "\"\r\n\r\n";
-				*m_content_disposition += m_iter->second;
-				*m_content_disposition += "\r\n";
-				yield boost::asio::async_write(m_http_stream,
-					boost::asio::buffer(*m_content_disposition), *this);
+				// 写完了, 回调用户.
+				m_handler(ec);
+			}else {
+				// 执行到这里, 其实是用户完成了 write_tail.
+				m_real_finish_handler(ec);
 			}
-
-			// 发送边界.
-			yield boost::asio::async_write(m_http_stream, boost::asio::buffer(m_boundary), *this);
-
-			// 发送文件名.
-			*m_content_disposition = "Content-Disposition: form-data; name=\""
-				+ m_file_of_form + "\"" + "; filename=" + "\""
-				+ fs::path(m_filename).leaf().string() + "\"\r\n"
-				+ "Content-Type: "
-				+ extension_to_type(boost::to_lower_copy(fs::extension(m_filename)))
-				+ "\r\n\r\n";
-			yield boost::asio::async_write(m_http_stream,
-				boost::asio::buffer(*m_content_disposition), *this);
-
-			// 回调用户handler.
-			m_handler(ec);
 		}
 	}
 
@@ -244,8 +340,11 @@ struct file_upload::open_coro : boost::asio::coroutine
 	const form_args& m_form_args;
 	std::string m_file_of_form;
 	std::string& m_boundary;
+
+	boost::shared_ptr<interthread_stream> m_body_stream;
+	boost::function<void(boost::system::error_code)>& m_real_finish_handler;
+
 	boost::shared_ptr<std::string> m_content_disposition;
-	form_args::const_iterator m_iter;
 };
 
 template <typename Handler>
@@ -254,8 +353,10 @@ file_upload::make_open_coro(const std::string& url, const std::string& filename,
 	const std::string& file_of_form, const form_args& args, BOOST_ASIO_MOVE_ARG(Handler) handler)
 {
 	m_form_args = args;
-	return open_coro<Handler>(m_http_stream,
-		url, filename, file_of_form, m_form_args, m_boundary, handler);
+	if (m_disable_100_continue)
+		m_body_stream.reset(new interthread_stream(m_io_service));
+	return open_coro<Handler>(m_http_stream, url, filename, file_of_form, m_form_args,
+		m_boundary, m_body_stream, m_body_stream_handler, handler);
 }
 
 template <typename Handler>
@@ -378,7 +479,10 @@ void file_upload::async_write_some(const ConstBufferSequence& buffers, BOOST_ASI
 {
 	AVHTTP_WRITE_HANDLER_CHECK(Handler, handler) type_check;
 
-	m_http_stream.async_write_some(buffers, handler);
+	if (m_disable_100_continue)
+		return m_body_stream->async_write_some(buffers, handler);
+	else
+		return m_http_stream.async_write_some(buffers, handler);
 }
 
 void file_upload::write_tail(boost::system::error_code& ec)
@@ -399,19 +503,20 @@ void file_upload::write_tail()
 	m_http_stream.receive_header();
 }
 
-template <typename Handler>
-struct file_upload::tail_coro : boost::asio::coroutine
+namespace detail {
+
+template <typename Stream, typename Handler>
+struct tail_coro : boost::asio::coroutine
 {
-	tail_coro(std::string& boundary, http_stream& http, Handler handler)
+	tail_coro(std::string& boundary, Stream& http, Handler handler)
 		: m_boundary(boundary)
-		, m_http_stream(http)
+		, m_stream(http)
 		, m_handler(handler)
 	{
 		// 发送结尾.
 		m_boundary = "\r\n--" FORMBOUNDARY "--\r\n";
-		boost::asio::async_write(m_http_stream, boost::asio::buffer(m_boundary), *this);
+		boost::asio::async_write(m_stream, boost::asio::buffer(m_boundary), *this);
 	}
-
 	void operator()(boost::system::error_code ec, std::size_t bytes_transfered = 0)
 	{
 		if (ec)
@@ -422,27 +527,68 @@ struct file_upload::tail_coro : boost::asio::coroutine
 
 		reenter (this)
 		{
-			yield m_http_stream.async_receive_header(*this);
+			// 根据是不是 100 ,  使用 async_receive_header 或者 shutdown!
+			yield m_stream.async_receive_header(*this);
 			m_handler(boost::system::error_code());
 		}
 	}
 
-// private:
+ private:
 	Handler m_handler;
 	std::string& m_boundary;
-	http_stream& m_http_stream;
+	Stream& m_stream;
 };
 
-template <typename Handler>
-file_upload::tail_coro<Handler> file_upload::make_tail_coro(BOOST_ASIO_MOVE_ARG(Handler) handler)
+template <typename Stream, typename Handler>
+struct tail_body_stream_coro : boost::asio::coroutine
 {
-	return tail_coro<Handler>(m_boundary, m_http_stream, handler);
+	tail_body_stream_coro(std::string& boundary, Stream& http,
+		boost::function<void(boost::system::error_code)> &asyn_open_handler,
+		Handler handler)
+		: m_stream(http)
+		, m_handler(handler)
+	{
+		asyn_open_handler = m_handler;
+		// 发送结尾.
+		boundary = "\r\n--" FORMBOUNDARY "--\r\n";
+		boost::asio::async_write(m_stream, boost::asio::buffer(boundary.c_str(), boundary.length()), *this);
+	}
+
+	void operator()(boost::system::error_code ec, std::size_t bytes_transfered = 0)
+	{
+		// 执行后,  将导致 async_open 最终返回. 并调用 m_handler
+		m_stream.shutdown(boost::asio::socket_base::shutdown_send);
+	}
+
+ private:
+	Handler m_handler;
+	Stream& m_stream;
+};
+
+template<typename Handler>
+tail_coro<http_stream, Handler>
+make_tail_coro(std::string& boundary, http_stream& http, Handler handler)
+{
+	return tail_coro<http_stream, Handler>(boundary, http, handler);
 }
+
+template<typename Handler>
+tail_body_stream_coro<interthread_stream, Handler>
+make_tail_body_stream_coro(std::string& boundary, interthread_stream& http,
+boost::function<void(boost::system::error_code)> &asyn_open_handler, Handler handler)
+{
+	return tail_body_stream_coro<interthread_stream, Handler>(boundary, http, asyn_open_handler, handler);
+}
+
+} // namespace detail
 
 template <typename Handler>
 void file_upload::async_write_tail(BOOST_ASIO_MOVE_ARG(Handler) handler)
 {
-	make_tail_coro<Handler>(handler);
+	if (m_disable_100_continue)
+		detail::make_tail_body_stream_coro(m_boundary, *m_body_stream, m_body_stream_handler, handler);
+	else
+		detail::make_tail_coro(m_boundary, m_http_stream, handler);
 }
 
 void file_upload::request_option(request_opts& opts)

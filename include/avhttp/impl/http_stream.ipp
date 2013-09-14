@@ -19,6 +19,7 @@
 #include "avhttp/http_stream.hpp"
 #include "avhttp/detail/handler_type_requirements.hpp"
 #include "avhttp/detail/escape_string.hpp"
+#include "avhttp/detail/splice_stream.hpp"
 
 namespace avhttp {
 
@@ -1217,19 +1218,19 @@ void http_stream::request(request_opts& opt, boost::system::error_code& ec)
 		LOG_ERROR("Send request, error message: \'" << ec.message() <<"\'");
 		return;
 	}
-
-	// 判断是否设置有用户回调.
-	request_opts::body_callback_func body_callback = m_request_opts.body_callback();
-	if (body_callback)
+	// 判断是否设置有用户body_stream.
+	if (m_request_opts_priv.body_stream())
 	{
-		body_callback(ec);
+		interthread_stream * body_stream = m_request_opts_priv.body_stream();
+
+		splice_stream(*body_stream, m_sock, ec);
+
 		if (ec)
 		{
-			LOG_ERROR("Body callback, error message: \'" << ec.message() <<"\'");
+			LOG_ERROR("error while read body stream, error message: \'" << ec.message() <<"\'");
 			return;
 		}
 	}
-
 	// 读取http头.
 	receive_header(ec);
 }
@@ -1844,6 +1845,26 @@ void http_stream::handle_connect(Handler handler,
 }
 
 template <typename Handler>
+void http_stream::handle_request_body(Handler handler, const boost::system::error_code& err)
+{
+	// 发生错误.
+	if (err)
+	{
+		LOG_ERROR("Send request, error message: \'" << err.message() <<"\'");
+		handler(err);
+		return;
+	}
+
+	// 异步读取Http status.
+	boost::asio::async_read_until(m_sock, m_response, "\r\n",
+		boost::bind(&http_stream::handle_status<Handler>,
+			this, handler,
+			boost::asio::placeholders::error
+		)
+	);
+}
+
+template <typename Handler>
 void http_stream::handle_request(Handler handler, const boost::system::error_code& err)
 {
 	// 发生错误.
@@ -1854,26 +1875,20 @@ void http_stream::handle_request(Handler handler, const boost::system::error_cod
 		return;
 	}
 
-	// 判断是否设置有用户回调.
-	request_opts::body_callback_func body_callback = m_request_opts.body_callback();
-	if (body_callback)
+	if (m_request_opts_priv.body_stream())
 	{
-		boost::system::error_code ec;
-		body_callback(ec);
-		if (ec)
-		{
-			LOG_ERROR("Body callback, error message: \'" << ec.message() <<"\'");
-			return;
-		}
+		// 读取 body stream 并写入 http_stream.
+		async_splice_stream(*(m_request_opts_priv.body_stream()), m_sock,
+			boost::bind(&http_stream::handle_request_body<Handler>,
+				this, handler,
+				boost::asio::placeholders::error
+			)
+		);
 	}
-
-	// 异步读取Http status.
-	boost::asio::async_read_until(m_sock, m_response, "\r\n",
-		boost::bind(&http_stream::handle_status<Handler>,
-			this, handler,
-			boost::asio::placeholders::error
-		)
-	);
+	else
+	{
+		handle_request_body(handler, err);
+	}
 }
 
 template <typename Handler>

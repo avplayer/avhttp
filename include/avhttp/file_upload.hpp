@@ -68,8 +68,8 @@ public:
 	typedef std::map<std::string, std::string> form_args;
 
 	/// Constructor.
-	AVHTTP_DECL explicit file_upload(boost::asio::io_service& io);
-
+	/// disable_continue 将导致 file_upload 不使用 Expect: 100-contine
+	AVHTTP_DECL explicit file_upload(boost::asio::io_service& io, bool disable_continue=false);
 	/// Destructor.
 	AVHTTP_DECL virtual ~file_upload();
 
@@ -221,17 +221,10 @@ private:
 	template <typename Handler>
 	struct open_coro;
 
-	template <typename Handler>
-	struct tail_coro;
-
-	///辅助函数，用于创建协程并进行 Templet type deduction.
+	///辅助函数，用于创建协程并进行 template type deduction.
 	template <typename Handler>
 	open_coro<Handler> make_open_coro(const std::string& url, const std::string& filename,
 		const std::string& file_of_form, const form_args& args, BOOST_ASIO_MOVE_ARG(Handler) handler);
-
-	///辅助函数，用于创建协程并进行 Templet type deduction.
-	template <typename Handler>
-	tail_coro<Handler> make_tail_coro(BOOST_ASIO_MOVE_ARG(Handler) handler);
 
 private:
 
@@ -240,12 +233,17 @@ private:
 
 	// http_stream对象.
 	http_stream m_http_stream;
-
+	// interthread_stream 对象, 用于发送 post body
+	boost::shared_ptr<interthread_stream> m_body_stream;
+	// body stream 发送完成后,  让 async_open 真正回调到这里.
+	boost::function<void(boost::system::error_code)> m_body_stream_handler;
 	// 边界符.
 	std::string m_boundary;
 
 	// 表单参数.
 	form_args m_form_args;
+
+	bool m_disable_100_continue;
 };
 
 } // namespace avhttp

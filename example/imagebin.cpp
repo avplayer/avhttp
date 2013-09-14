@@ -11,7 +11,7 @@ class image_bin : public boost::noncopyable
 public:
 	image_bin(boost::asio::io_service& io, const std::string& filename, const std::string& nickname)
 		: m_io(io)
-		, m_file_upload(io)
+		, m_file_upload(io, true)
 		, m_filename(filename)
 	{
 		avhttp::file_upload::form_args args;

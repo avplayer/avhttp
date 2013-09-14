@@ -589,6 +589,9 @@ protected:
 	void handle_request(Handler handler, const boost::system::error_code& err);
 
 	template <typename Handler>
+	void handle_request_body(Handler handler, const boost::system::error_code& err);
+
+	template <typename Handler>
 	void handle_status(Handler handler, const boost::system::error_code& err);
 
 	template <typename Handler>
