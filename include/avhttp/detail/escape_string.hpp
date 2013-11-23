@@ -48,6 +48,12 @@ inline bool is_ctl(int c)
 	return (c >= 0 && c <= 31) || c == 127;
 }
 
+// Check if character is unreserved. List of unreserved characters is here: http://en.wikipedia.org/wiki/Percent-encoding
+inline bool is_unreserved_char(const char c)
+{
+	return (c >= 'A' && c<= 'Z') || (c >= 'a' && c<= 'z') || (c >= '0' && c <= '9') || ('-' == c) || ('_' == c) || ('.' == c) || ('~' == c);
+}
+
 inline bool is_tspecial(int c)
 {
 	switch (c)
@@ -90,6 +96,8 @@ inline bool tolower_compare(char a, char b)
 	return std::tolower(a) == std::tolower(b);
 }
 
+// convert path string to percent-encoded string.
+// ATTENTION: Only some "reserved characters" are transformed to percent-encoded form. Some characters like 0x02 are not transformed too.
 inline std::string escape_path(const std::string& s)
 {
 	std::string ret;
@@ -99,6 +107,24 @@ inline std::string escape_path(const std::string& s)
 	{
 		h = *i;
 		if (!is_char(*i) || is_tspecial(*i))
+			h = "%" + to_hex(h);
+		ret += h;
+	}
+
+	return ret;
+}
+
+// convert any string to percent-encoded string. All characters except Unreserved onces are percent encoded.
+// List of reserved and unreserved characters is taken from http://en.wikipedia.org/wiki/Percent-encoding
+inline std::string escape_string(const std::string& s)
+{
+	std::string ret;
+	std::string h;
+
+	for (std::string::const_iterator i = s.begin(); i != s.end(); i++)
+	{
+		h = *i;
+		if (!is_unreserved_char(*i))
 			h = "%" + to_hex(h);
 		ret += h;
 	}
@@ -120,6 +146,8 @@ inline bool unescape_path(const std::string& in, std::string& out)
 				unsigned int value = 0;
 				for (std::size_t j = i + 1; j < i + 3; ++j)
 				{
+					value <<= 4;
+
 					switch (in[j])
 					{
 					case '0': case '1': case '2': case '3': case '4':
@@ -135,8 +163,6 @@ inline bool unescape_path(const std::string& in, std::string& out)
 					default:
 						return false;
 					}
-					if (j == i + 1)
-						value <<= 4;
 				}
 				out += static_cast<char>(value);
 				i += 2;
@@ -144,9 +170,10 @@ inline bool unescape_path(const std::string& in, std::string& out)
 			else
 				return false;
 			break;
-		case '-': case '_': case '.': case '!': case '~': case '*':
-		case '\'': case '(': case ')': case ':': case '@': case '&':
-		case '=': case '+': case '$': case ',': case '/': case ';':
+		case '-': case '_': case '.': case '~': // unreserved characters. Do not encode them at any case
+		// Reserved characters. In some special cases this characters might stay escaped.
+		case '!': case '*': case '\'': case '(': case ')': case ';': case ':': case '@': case '&':
+		case '=': case '+': case '$': case ',': case '/': case '?': case '#': case '[': case ']':
 			out += in[i];
 			break;
 		default:
