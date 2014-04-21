@@ -6,9 +6,9 @@ compiler:
 before_install:
   - sudo apt-get update
   - sudo apt-get install zlib1g-dev
-  - wget http://jaist.dl.sourceforge.net/boost/boost_1_54_0.tar.bz2
-  - tar -xf boost_1_54_0.tar.bz2
-  - ( cd boost_1_54_0  && ./bootstrap.sh --prefix=/usr --with-libraries=date_time,filesystem,exception,log,locale,random,regex,program_options,system,thread && sudo ./b2 -j2 link=static install ) > /dev/null
+  - wget http://jaist.dl.sourceforge.net/boost/boost_1_55_0.tar.bz2
+  - tar -xf boost_1_55_0.tar.bz2
+  - ( cd boost_1_55_0  && ./bootstrap.sh --prefix=/usr --with-libraries=date_time,filesystem,exception,log,locale,random,regex,program_options,system,thread && sudo ./b2 -j2 link=static install ) > /dev/null
 
 before_script:
   cmake . -DDEBUG=1
