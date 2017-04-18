@@ -668,7 +668,7 @@ std::size_t http_stream::read_some(const MutableBufferSequence& buffers,
 			if (!m_is_gzip)	// 如果没有启用gzip, 则直接读取数据后返回.
 #endif
 			{
-				bytes_transferred = read_some_impl(boost::asio::buffer(buffers, max_length), ec);
+				bytes_transferred = read_some_impl(buffers, ec);
 				m_chunked_size -= bytes_transferred;
 				return bytes_transferred;
 			}
